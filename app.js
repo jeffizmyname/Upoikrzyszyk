@@ -1,7 +1,7 @@
-const board = document.getElementById("board")
-const info = document.getElementById("info")
-const reset = document.getElementById("reset")
-const fields = "";
+const board = document.getElementById("board");
+const info = document.getElementById("info");
+const reset = document.getElementById("reset");
+const playCpuButton = document.getElementById("playCpu");
 const wins = [
     [0, 1, 2],
     [3, 4, 5],
@@ -11,57 +11,121 @@ const wins = [
     [2, 5, 8],
     [0, 4, 8],
     [2, 4, 6]
-]
-let x = []
-let o = []
-let turn = 0;
-let winner;
+];
+const humanPlayer = 'X';
+const aiPlayer = 'O';
+let vsCpu = false;
+let currentPlayer = humanPlayer;
 
-createBoard()
+createBoard();
 
 function createBoard() {
-    board.innerHTML = ""
-    for(let i = 0; i < 9; i++) {
-        const field = document.createElement("div")
-        field.id = i
-        field.innerHTML = "."
-        field.classList.add("field")
-        board.appendChild(field)
-        field.addEventListener("click", place)
+    board.innerHTML = "";
+    for (let i = 0; i < 9; i++) {
+        const field = document.createElement("div");
+        field.id = i;
+        field.innerHTML = ".";
+        field.classList.add("field");
+        board.appendChild(field);
+        field.addEventListener("click", place);
     }
 }
 
 function place(e) {
-    if (e.target.innerHTML == "." && info.innerHTML == "") {
-        if(turn == 1) {
-            e.target.innerHTML = "X"
-            turn = 0
-            x.push(Number(e.target.id))
-            x.sort((a, b) => a - b)
-        } else if(turn == 0) {
-            e.target.innerHTML = "O"
-            turn = 1
-            o.push(Number(e.target.id))
-            o.sort((a, b) => a - b)
+    if (e.target.innerHTML === "." && info.innerHTML === "") {
+        e.target.innerHTML = currentPlayer;
+        if (checkWin(currentPlayer)) {
+            info.innerHTML = currentPlayer === humanPlayer ? "X wins!" : "O wins!";
+        } else if (checkDraw()) {
+            info.innerHTML = "It's a draw!";
+        } else {
+            currentPlayer = currentPlayer === humanPlayer ? aiPlayer : humanPlayer;
+            if (vsCpu && currentPlayer === aiPlayer) {
+                setTimeout(cpuMove, 500);
+            }
         }
-    }
-    if(checkWin(x)){
-        info.innerHTML = "x wins"
-    }
-    if(checkWin(o)) {
-        info.innerHTML = "o wins"
     }
 }
 
-function checkWin(board) {
+function cpuMove() {
+    let bestScore = -Infinity;
+    let move;
+    for (let i = 0; i < 9; i++) {
+        if (board.children[i].innerHTML === ".") {
+            board.children[i].innerHTML = aiPlayer;
+            let score = minimax(board.children, 0, false);
+            board.children[i].innerHTML = ".";
+            if (score > bestScore) {
+                bestScore = score;
+                move = i;
+            }
+        }
+    }
+    board.children[move].innerHTML = aiPlayer;
+    currentPlayer = humanPlayer;
+    if (checkWin(aiPlayer)) {
+        info.innerHTML = "O wins!";
+    }
+    if (checkDraw()) {
+        info.innerHTML = "It's a draw!";
+    }
+}
+
+function minimax(board, depth, isMaximizing) {
+    if (checkWin(aiPlayer)) {
+        return 1;
+    } else if (checkWin(humanPlayer)) {
+        return -1;
+    } else if (checkDraw()) {
+        return 0;
+    }
+
+    if (isMaximizing) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < 9; i++) {
+            if (board[i].innerHTML === ".") {
+                board[i].innerHTML = aiPlayer;
+                let score = minimax(board, depth + 1, false);
+                board[i].innerHTML = ".";
+                bestScore = Math.max(score, bestScore);
+            }
+        }
+        return bestScore;
+    } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < 9; i++) {
+            if (board[i].innerHTML === ".") {
+                board[i].innerHTML = humanPlayer;
+                let score = minimax(board, depth + 1, true);
+                board[i].innerHTML = ".";
+                bestScore = Math.min(score, bestScore);
+            }
+        }
+        return bestScore;
+    }
+}
+
+function checkWin(player) {
     return wins.some(combination =>
-        combination.every(position => board.includes(position))
+        combination.every(position => board.children[position].innerHTML === player)
     );
 }
 
-reset.addEventListener('click', function() {
-    x = []
-    o = []
-    createBoard()
-    info.innerHTML = ""
-})
+function checkDraw() {
+    return Array.from(board.children).every(field => field.innerHTML !== ".");
+}
+
+reset.addEventListener("click", function () {
+    Array.from(board.children).forEach(field => {
+        field.innerHTML = ".";
+    });
+    info.innerHTML = "";
+    currentPlayer = humanPlayer;
+});
+
+playCpuButton.addEventListener("click", function () {
+    vsCpu = true;
+    info.innerHTML = "Playing against CPU";
+    currentPlayer = humanPlayer;
+    reset.click()
+});
